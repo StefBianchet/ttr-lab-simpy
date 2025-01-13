@@ -5,16 +5,30 @@
 # The simulation should run for 1000 time units.
 # The output should be an array of the service times for each customer.
 
+
 import simpy
 from statistics import mean
 import random
 import numpy as np
+import sys
+import os
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from visualization.plots import histogram_plot, scatter_plot, percentile_plot, heatmap_plot
 
 # Parameters
-# arrival_rate = 90.0
-arrival_rate = 180.0
-# service_rate = 100
-service_rate = 190.0
+# Mean files per web page = 5
+
+# Parts using 90 as arrival rate
+# arrival_rate = 90.0 / 5
+# service_rate = 126.0
+# service_rate = 143.0
+
+# Parts using 180 as arrival rate
+arrival_rate = 180.0 / 5
+# service_rate = 216.0
+service_rate = 234.0
 num_requests = 1_000_000
 
 # Results
@@ -28,7 +42,11 @@ server = simpy.Resource(env, capacity=1)
 def request_generator(env):
     for i in range(num_requests):
         yield env.timeout(random.expovariate(arrival_rate))
-        env.process(process_request(env))
+        
+        # Generate a random batch size between 1 and 9
+        batch_size = random.randint(1, 9)
+        for _ in range(batch_size):
+            env.process(process_request(env))
 
 def process_request(env):
     arrival_time = env.now
@@ -50,3 +68,20 @@ mean_response_time = np.mean(response_times)
 print(f'Mean response time: {mean_response_time:.4f} s')
 response_time_99 = np.percentile(response_times, 99)
 print(f'Response time (99th percentile): {response_time_99:.4f} s')
+
+# ---------------------------------------------------------------------------
+# Generate plots
+
+numpy_response_times = np.array(response_times)
+
+# Histogram
+histogram_plot(numpy_response_times, title="Histogram", xlabel="Response time (s)", filename='histogram.png')
+
+# Scatter plot
+scatter_plot(numpy_response_times, title="Scatter plot", ylabel="Response time (s)", filename='scatter.png')
+
+# Percentile plot
+percentile_plot(numpy_response_times, window=10_000, title="Percentile plot", ylabel="Response time (s)", filename='percentiles.png')
+
+# Heatmap plot
+heatmap_plot(numpy_response_times, title="Heatmap")
